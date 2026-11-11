@@ -1,58 +1,191 @@
-# Group Assignment Report
+# ParcelPilot — GROUP REPORT WORKING DRAFT (NOT SUBMISSION READY)
 
-- **Team** (Blackboard group name):
-- **Section**: [BBADBA 5A | BBADBA 5B | PPLEDBA 5A]
-- **Space URL**:
-- **Final commit** (tag `final`):
+> **Status: starter scaffold written with AI.** Project choices, test-case authorship,
+> team labels, measurements, drift-threshold justification, value assumptions and
+> conclusions below must be independently decided and substantiated by the team.
+> Example figures are **hypothetical**, not evaluation results. Delete this notice
+> only when it accurately describes finished team work.
 
-*At most about 3,000 words, tables excluded. Members and who did what go in CONTRIBUTIONS.md.*
+- **Team:** `[Blackboard team name]`
+- **Section:** `[section]`
+- **Space URL:** `[public URL — deploy and verify]`
+- **Final commit/tag:** `[git SHA / final]`
 
-## Business case
+## 1. Business case, baseline, and value
 
-*Who uses it, which decision or task it supports, what happens today without it (the baseline), the success metric, and a rough value in euros with the assumptions behind it.*
+**Candidate business process (an AI-suggested example, team to accept/change):** a
+parcel-support operator receives an aggregate summary of a shipment issue (issue
+type, days late, number of previous contacts, item value, damage flag, refund
+request flag). The app predicts whether a case can receive a routine *draft* or
+must go to staff, then retrieves a safe internal demo policy and drafts a reply.
+It cannot send replies, check real orders or approve refunds. No PII is accepted.
 
-## Architecture
+**Current baseline, for the team to verify:** staff manually examine every case
+and draft each response. This example assumes 4 minutes/case; **not measured**.
+The `baseline` column in provisional CSVs says `manual_review` to record this
+counterfactual. It does **not** mean that manual replies are wrong.
 
-*The two components and how one feeds the other: a diagram plus a short walk-through of one request from input to output. Which models or APIs, and why those. What you reused from assignments 1–3, and whose it was.*
+**Illustrative euros only (replace with observations):** for 300 cases/day, 20
+business days/month, €18/hour staff cost, the assumed all-manual workload is
+`300 × 20 × 4 / 60 = 400 hours/month`, or `€7,200/month`. If (hypothetically)
+30% of cases need four minutes of staff attention and the remainder a 0.5-minute
+check, the pilot would use `300 × 20 × (0.3×4 + 0.7×0.5) / 60 = 155 hours/month`;
+**illustrative gross labor saving €4,410/month**, before API fees, maintenance,
+compliance work, integration, reversals and error costs. This is **not a claim**
+of actual value. Real measured workload and review rates are required.
 
-## Data
+**Team's real success targets:** `[e.g. classification macro-F1 target, response
+quality acceptance target, maximum unsafe auto-handling rate, max latency,
+financial break-even; justify thresholds with team evidence]`.
 
-*Where each component's data comes from, with links, licences and sizes. Confirm that there is no personal data in your inputs or logs.*
+## 2. Architecture and handoff
 
-## Evaluation
+```text
+Non-PII structured case (six fields)
+          │ strict validation, out-of-scope guard
+          ▼
+Component A: TABULAR logistic regression (NumPy, trained on synthetic data)
+          │ output: review_probability, label = routine/review
+          ▼
+Component B: AGENTIC LLM (Gemini tool calling)
+          ├─ chooses lookup_policy(issue) tool
+          ├─ executes lookup on static in-repo approved policy dictionary
+          └─ generates a 2–4 sentence draft using component A's label
+          │
+          ▼
+Staff-review gate → Gradio App → structured JSON logs → Monitoring PSI / feedback
+```
 
-### Components
+The numerical model is *really fitted* by gradient descent, but its labels are
+invented through synthetic rules. **Its apparent accuracy on rule-matching data
+is not evidence of real-world predictive quality.** The LLM's output depends on
+A's classification, and its function call retrieves a policy. The agent is not
+allowed to take actual customer-service actions. All missing-key and API-error
+fallbacks are prominently marked `offline_demo` or `api_error_fallback` and are
+sent to review; they must not be counted as live LLM results.
 
-*Each component on its own: the metric, the result, the test data and its size.*
+**Alternatives to compare (team choice):** `[e.g. manual-only, simple fixed
+thresholds, Gemini Flash-Lite vs Flash, calibrated tabular features; report
+independent evidence rather than repeating this proposal]`.
 
-### End to end
+## 3. Training data and privacy
 
-*How you wrote `eval/cases.csv` (counts by kind, two examples). Results against the baseline. Where the output is free text: the judge's rubric and your agreement with it on your own labels.*
+The starter's tabular examples are generated by code from an explicit synthetic
+routing policy and noisy synthetic labels; there is **no licensed real data**.
+The temporary `eval/cases.csv` (44 rows), `eval/reference.csv` (60) and
+`eval/shifted.csv` (16) are AI-generated **demo fixtures, not team test cases**.
+They are labeled `AI_DEMO_REPLACE`. Replace them with cases written and labeled
+independently by the team. Use a real training-vs-test split with no leakage and
+document the source/license. The input parser only accepts an enumerated issue
+and five non-identifying numerical values. Rejected inputs are not stored verbatim.
+Logs contain aggregate fields and model outputs, not raw customer messages.
 
-### Cost and latency
+**Open privacy limitation:** even aggregate inputs could become sensitive if
+combined with external data. Never use actual customer records; perform a data
+protection review before any genuine deployment. Do not put names, addresses,
+photos, email addresses, phone numbers or tracking IDs in tests, prompts or logs.
 
-*Per request: tokens, euros and seconds, for each component and in total. What it would cost per month at the volume in your business case.*
+## 4. Evaluation — complete with real evidence
 
-## Operations
+Run `uv run python main.py evaluate`. It writes `eval/results.csv` and
+`eval/summary.json`. **Do not paste numbers from the provided demo run into a
+final report as measured performance.** Fill in a table with:
 
-*What you log. The quality signal and the drift check you monitor, the reference set, and the alert threshold with its justification. The drift demo: what you shifted, and the result with the alert firing (screenshot or numbers). The rate of false alarms on normal inputs.*
+| Measure | Team result | Data source / rationale |
+|---|---|---|
+| Component A accuracy and macro-F1 | `[measured]` | `[human-labeled held-out cases]` |
+| Component A class precision/recall | `[measured]` | `[same held-out cases]` |
+| Component B rule-check pass rate | `[measured]` | `results.csv` (automated guardrail only) |
+| Component B human quality pass rate | `[measured]` | `[independently labeled live drafts]` |
+| Gemini judge versus 20+ own labels | `[agreement + confusion]` | `human_labels.csv` |
+| End-to-end fully correct and safe | `[measured]` | `[joint class + human reply judgment]` |
+| Manual baseline time and quality | `[measured]` | `[timed manual workflow + adjudication]` |
+| Median seconds, input/output tokens | `[measured]` | `results.csv` |
+| Mean cost in euros | `[estimated with dated FX + rate]` | `summary.json`, Gemini billing basis |
 
-## Failures
+The automatic `end_to_end_check` only verifies predicted routing labels and
+simple drafting guardrails. It **does not measure helpfulness, hallucination or
+actual service resolution**. `EVAL_USE_LLM_JUDGE=1` calls Gemini for each live
+LLM draft, and `human_labels.csv` is used to measure judge agreement; create
+those labels yourself *before* viewing judge results. Count judge cost separately.
 
-*Failed end-to-end cases grouped by cause (which component, or the hand-off between them), with counts, and what you would fix first.*
+For baselines compare quality where it is meaningfully comparable, plus
+staff-minutes, average marginal cost and proportion handled with supervision.
+Always account for the possibility that manual staff replies are more accurate.
 
-## Decision
+## 5. Operations and drift
 
-*Which cases go to a person: the rule, and how many cases a day that would be. Go / no-go / go with conditions: the conditions, and the evidence behind them.*
+Logs record an anonymous ID, timestamp, aggregate input summary, 9 numeric
+features, both component outputs, versions, prompt variant, review flag, token
+count, estimated euro cost, latency and latest 👍/👎. The Monitoring tab plots
+review rate, rated down-vote share, and average classifier confidence, and
+compares recent numeric input features to `monitoring/reference_features.csv`
+using population stability index (PSI). It provides alerts for PSI, review rate
+and negative feedback.
 
-## Bonus: reinforcement learning
+**Starter thresholds, NOT yet justified:** 5 PSI bins, PSI larger than both
+0.25 and twice an estimated random-sampling noise floor, at least 20 live
+requests; review-rate >75% (>=20 recent requests); negative feedback >40% (>=10
+rated requests). Calibrate these from team-written normal and deliberately
+shifted sets; quantify false positives and misses. Demonstrate this command:
+`DEMO_MODE=1 uv run python main.py drift-demo`. The AI-generated fixture is
+constructed to show a normal/shifted separation, *not* proof on live traffic.
 
-*Delete this section if you did not do it. The loop (feedback → reward → update → behaviour), the reward and what it could reward by accident, the exploration strategy and its cost, the evidence from real logs (and which part was simulated), the risks.*
+## 6. Failure analysis
 
-## How to run it
+Group actual failures by source: validation/out-of-scope, incorrect tabular
+routing, unsafe LLM claim or irrelevant policy, tool-call errors, missing API
+quota, unhelpful fallback, and UI/logging issues. For each category supply
+`[count / representative anonymous case / likely cause / mitigation]`.
 
-*Anything beyond SETUP.md that the professor needs to run it: which keys, any download step, how long the first run takes.*
+## 7. Review rule and go/no-go
 
-## AI use
+**Provisional code rule:** missing parcel is always escalated; send also when
+predicted risk >=0.60, or in uncertainty band [0.40, 0.60], or if the LLM is
+unavailable. Staff must verify every generated draft before using it in a real
+workflow. This threshold was **not tuned on real labels** and must be replaced
+or justified from your independent error-cost estimates. At `N` daily requests,
+expected daily staff cases = `N × observed review_rate`.
 
-*What you used and how, or "none".*
+**A defensible interim decision for this unfinished prototype is NO-GO** for
+unsupervised use because the training data and external evaluation are synthetic
+and customer policies are not authenticated. The team can change its final
+decision only with real evidence, actual policies, legal/privacy checks and a
+well-defined escalation/rollback process.
+
+## 8. Optional RL bonus
+
+When `ENABLE_BANDIT=1`, a three-variant epsilon-greedy policy selects a concise,
+empathetic or steps-oriented LLM prompt. The app records the variant, and after
+a real thumbs-up/down, the next request estimates the reward of each variant
+from **actual logs** (smoothed mean with Beta(1,1) pseudo-counts). Exploration is
+10%; users occasionally receive a currently weaker tone. **No bonus should be
+claimed unless the team demonstrates actual real-user feedback changing the
+choice and compares before/after traces.** This is contextual only in the
+sense of choosing wording: it is an ordinary, noncontextual bandit, not deep RL.
+
+Reward is immediate thumbs-up=1 or thumbs-down=0 and can be gamed by pleasant
+but incorrect responses. Unrated responses create selection bias; the procedure
+can amplify early noise and reward optimism, and needs periodic audits. Human
+review and safety constraints do not change with the chosen style. Rate the
+agent's truthfulness independently of thumbs feedback.
+
+## 9. How to reproduce
+
+Follow `README_APPLY.md`, keep the course's original `env.py`, `logbook.py`,
+`main.py`, `deploy.py`, `check.py`, `pyproject.toml` and `uv.lock`. Use only an
+allowed Gemini API key for live LLM inference. Never publish keys. The starter
+model trains in-memory using NumPy; no external model weights required. An HF
+Space and a private HF dataset for durable logs must be created by the team.
+
+## 10. AI use disclosure
+
+**Suggested accurate wording for the starter stage:**
+"We used GPT-6 to generate and debug initial Python code, a synthetic demo
+fixture, and an illustrative report outline. We have not treated AI-generated
+demo examples, labels, thresholds, assumptions or analysis as team-produced
+assessment evidence. The team must independently author the required decisions,
+tests, labels, conclusions, and project analysis before final submission."
+
+Replace this with an honest final description of what actually happened; name
+any reused code from assignments 1–3 and its author.

@@ -1,1 +1,45 @@
 id,input,kind,expected,baseline,notes
+n01,issue=late_delivery; days_late=0; previous_contacts=0; item_value_eur=21; damaged=0; refund_requested=0,normal,routine,manual_review,AI_DEMO_REPLACE: fictional routine case; team must replace
+n02,issue=damaged_item; days_late=1; previous_contacts=1; item_value_eur=40; damaged=1; refund_requested=0,normal,routine,manual_review,AI_DEMO_REPLACE: fictional routine case; team must replace
+n03,issue=refund_request; days_late=2; previous_contacts=0; item_value_eur=66; damaged=0; refund_requested=1,normal,routine,manual_review,AI_DEMO_REPLACE: fictional routine case; team must replace
+n04,issue=late_delivery; days_late=3; previous_contacts=1; item_value_eur=94; damaged=0; refund_requested=0,normal,routine,manual_review,AI_DEMO_REPLACE: fictional routine case; team must replace
+n05,issue=damaged_item; days_late=4; previous_contacts=0; item_value_eur=127; damaged=1; refund_requested=0,normal,routine,manual_review,AI_DEMO_REPLACE: fictional routine case; team must replace
+n06,issue=refund_request; days_late=5; previous_contacts=1; item_value_eur=49; damaged=0; refund_requested=1,normal,routine,manual_review,AI_DEMO_REPLACE: fictional routine case; team must replace
+n07,issue=late_delivery; days_late=2; previous_contacts=0; item_value_eur=88; damaged=0; refund_requested=0,normal,routine,manual_review,AI_DEMO_REPLACE: fictional routine case; team must replace
+n08,issue=damaged_item; days_late=1; previous_contacts=0; item_value_eur=27; damaged=1; refund_requested=0,normal,routine,manual_review,AI_DEMO_REPLACE: fictional routine case; team must replace
+n09,issue=refund_request; days_late=3; previous_contacts=1; item_value_eur=74; damaged=0; refund_requested=1,normal,routine,manual_review,AI_DEMO_REPLACE: fictional routine case; team must replace
+n10,issue=late_delivery; days_late=0; previous_contacts=1; item_value_eur=114; damaged=0; refund_requested=0,normal,routine,manual_review,AI_DEMO_REPLACE: fictional routine case; team must replace
+n11,issue=damaged_item; days_late=4; previous_contacts=0; item_value_eur=55; damaged=1; refund_requested=0,normal,routine,manual_review,AI_DEMO_REPLACE: fictional routine case; team must replace
+n12,issue=refund_request; days_late=5; previous_contacts=1; item_value_eur=101; damaged=0; refund_requested=1,normal,routine,manual_review,AI_DEMO_REPLACE: fictional routine case; team must replace
+n13,issue=late_delivery; days_late=0; previous_contacts=0; item_value_eur=22; damaged=0; refund_requested=0,normal,routine,manual_review,AI_DEMO_REPLACE: fictional routine case; team must replace
+n14,issue=damaged_item; days_late=1; previous_contacts=1; item_value_eur=41; damaged=1; refund_requested=0,normal,routine,manual_review,AI_DEMO_REPLACE: fictional routine case; team must replace
+n15,issue=refund_request; days_late=2; previous_contacts=0; item_value_eur=67; damaged=0; refund_requested=1,normal,routine,manual_review,AI_DEMO_REPLACE: fictional routine case; team must replace
+n16,issue=late_delivery; days_late=3; previous_contacts=1; item_value_eur=95; damaged=0; refund_requested=0,normal,routine,manual_review,AI_DEMO_REPLACE: fictional routine case; team must replace
+n17,issue=damaged_item; days_late=4; previous_contacts=0; item_value_eur=128; damaged=1; refund_requested=0,normal,routine,manual_review,AI_DEMO_REPLACE: fictional routine case; team must replace
+n18,issue=refund_request; days_late=5; previous_contacts=1; item_value_eur=50; damaged=0; refund_requested=1,normal,routine,manual_review,AI_DEMO_REPLACE: fictional routine case; team must replace
+n19,issue=late_delivery; days_late=2; previous_contacts=0; item_value_eur=89; damaged=0; refund_requested=0,normal,routine,manual_review,AI_DEMO_REPLACE: fictional routine case; team must replace
+n20,issue=damaged_item; days_late=1; previous_contacts=0; item_value_eur=28; damaged=1; refund_requested=0,normal,routine,manual_review,AI_DEMO_REPLACE: fictional routine case; team must replace
+n21,issue=refund_request; days_late=3; previous_contacts=1; item_value_eur=75; damaged=0; refund_requested=1,normal,routine,manual_review,AI_DEMO_REPLACE: fictional routine case; team must replace
+n22,issue=late_delivery; days_late=0; previous_contacts=1; item_value_eur=115; damaged=0; refund_requested=0,normal,routine,manual_review,AI_DEMO_REPLACE: fictional routine case; team must replace
+n23,issue=damaged_item; days_late=4; previous_contacts=0; item_value_eur=56; damaged=1; refund_requested=0,normal,routine,manual_review,AI_DEMO_REPLACE: fictional routine case; team must replace
+n24,issue=refund_request; days_late=5; previous_contacts=1; item_value_eur=102; damaged=0; refund_requested=1,normal,routine,manual_review,AI_DEMO_REPLACE: fictional routine case; team must replace
+h01,issue=late_delivery; days_late=6; previous_contacts=2; item_value_eur=125; damaged=0; refund_requested=0,hard,review,manual_review,AI_DEMO_REPLACE: synthetic ambiguous case; expected label NOT independent
+h02,issue=damaged_item; days_late=7; previous_contacts=2; item_value_eur=190; damaged=1; refund_requested=0,hard,review,manual_review,AI_DEMO_REPLACE: synthetic ambiguous case; expected label NOT independent
+h03,issue=refund_request; days_late=5; previous_contacts=2; item_value_eur=170; damaged=0; refund_requested=1,hard,review,manual_review,AI_DEMO_REPLACE: synthetic ambiguous case; expected label NOT independent
+h04,issue=late_delivery; days_late=8; previous_contacts=1; item_value_eur=110; damaged=0; refund_requested=0,hard,review,manual_review,AI_DEMO_REPLACE: synthetic ambiguous case; expected label NOT independent
+h05,issue=damaged_item; days_late=3; previous_contacts=3; item_value_eur=80; damaged=1; refund_requested=0,hard,review,manual_review,AI_DEMO_REPLACE: synthetic ambiguous case; expected label NOT independent
+h06,issue=refund_request; days_late=9; previous_contacts=1; item_value_eur=180; damaged=0; refund_requested=1,hard,review,manual_review,AI_DEMO_REPLACE: synthetic ambiguous case; expected label NOT independent
+h07,issue=late_delivery; days_late=4; previous_contacts=2; item_value_eur=215; damaged=0; refund_requested=0,hard,review,manual_review,AI_DEMO_REPLACE: synthetic ambiguous case; expected label NOT independent
+h08,issue=damaged_item; days_late=10; previous_contacts=2; item_value_eur=205; damaged=1; refund_requested=0,hard,review,manual_review,AI_DEMO_REPLACE: synthetic ambiguous case; expected label NOT independent
+r01,issue=missing_parcel; days_late=12; previous_contacts=3; item_value_eur=250; damaged=0; refund_requested=0,review,review,manual_review,AI_DEMO_REPLACE: fictional severe case; team must replace
+r02,issue=late_delivery; days_late=15; previous_contacts=4; item_value_eur=310; damaged=0; refund_requested=0,review,review,manual_review,AI_DEMO_REPLACE: fictional severe case; team must replace
+r03,issue=damaged_item; days_late=7; previous_contacts=4; item_value_eur=450; damaged=1; refund_requested=0,review,review,manual_review,AI_DEMO_REPLACE: fictional severe case; team must replace
+r04,issue=refund_request; days_late=18; previous_contacts=3; item_value_eur=180; damaged=0; refund_requested=1,review,review,manual_review,AI_DEMO_REPLACE: fictional severe case; team must replace
+r05,issue=missing_parcel; days_late=10; previous_contacts=2; item_value_eur=265; damaged=0; refund_requested=0,review,review,manual_review,AI_DEMO_REPLACE: fictional severe case; team must replace
+r06,issue=late_delivery; days_late=16; previous_contacts=5; item_value_eur=405; damaged=0; refund_requested=0,review,review,manual_review,AI_DEMO_REPLACE: fictional severe case; team must replace
+r07,issue=damaged_item; days_late=11; previous_contacts=3; item_value_eur=175; damaged=1; refund_requested=0,review,review,manual_review,AI_DEMO_REPLACE: fictional severe case; team must replace
+r08,issue=refund_request; days_late=25; previous_contacts=5; item_value_eur=500; damaged=0; refund_requested=1,review,review,manual_review,AI_DEMO_REPLACE: fictional severe case; team must replace
+o01,issue=other_topic_0; days_late=0; previous_contacts=0; item_value_eur=0; damaged=0; refund_requested=0,out_of_scope,out_of_scope,manual_review,AI_DEMO_REPLACE: fictional unsupported case; team must replace
+o02,issue=other_topic_1; days_late=0; previous_contacts=0; item_value_eur=0; damaged=0; refund_requested=0,out_of_scope,out_of_scope,manual_review,AI_DEMO_REPLACE: fictional unsupported case; team must replace
+o03,issue=other_topic_2; days_late=0; previous_contacts=0; item_value_eur=0; damaged=0; refund_requested=0,out_of_scope,out_of_scope,manual_review,AI_DEMO_REPLACE: fictional unsupported case; team must replace
+o04,issue=other_topic_3; days_late=0; previous_contacts=0; item_value_eur=0; damaged=0; refund_requested=0,out_of_scope,out_of_scope,manual_review,AI_DEMO_REPLACE: fictional unsupported case; team must replace

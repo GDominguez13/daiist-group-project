@@ -16,3 +16,6 @@ requirements.txt
 
 # Past logs downloaded from your Hugging Face dataset when the app starts
 logs_archive/
+
+.env.*
+!.env.example

@@ -1,1 +1,17 @@
 input
+issue=missing_parcel; days_late=30; previous_contacts=6; item_value_eur=700; damaged=0; refund_requested=0
+issue=refund_request; days_late=31; previous_contacts=7; item_value_eur=750; damaged=0; refund_requested=1
+issue=damaged_item; days_late=32; previous_contacts=8; item_value_eur=800; damaged=1; refund_requested=0
+issue=late_delivery; days_late=33; previous_contacts=9; item_value_eur=850; damaged=0; refund_requested=0
+issue=missing_parcel; days_late=34; previous_contacts=6; item_value_eur=900; damaged=0; refund_requested=0
+issue=refund_request; days_late=35; previous_contacts=7; item_value_eur=950; damaged=0; refund_requested=1
+issue=damaged_item; days_late=36; previous_contacts=8; item_value_eur=1000; damaged=1; refund_requested=0
+issue=late_delivery; days_late=37; previous_contacts=9; item_value_eur=1050; damaged=0; refund_requested=0
+issue=missing_parcel; days_late=30; previous_contacts=6; item_value_eur=1100; damaged=0; refund_requested=0
+issue=refund_request; days_late=31; previous_contacts=7; item_value_eur=1150; damaged=0; refund_requested=1
+issue=damaged_item; days_late=32; previous_contacts=8; item_value_eur=1200; damaged=1; refund_requested=0
+issue=late_delivery; days_late=33; previous_contacts=9; item_value_eur=1250; damaged=0; refund_requested=0
+issue=missing_parcel; days_late=34; previous_contacts=6; item_value_eur=1300; damaged=0; refund_requested=0
+issue=refund_request; days_late=35; previous_contacts=7; item_value_eur=1350; damaged=0; refund_requested=1
+issue=damaged_item; days_late=36; previous_contacts=8; item_value_eur=1400; damaged=1; refund_requested=0
+issue=late_delivery; days_late=37; previous_contacts=9; item_value_eur=1450; damaged=0; refund_requested=0

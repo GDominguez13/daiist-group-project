@@ -1,10 +1,9 @@
-"""
-Monitoring: quality signals over time, drift against the reference set, alerts.
+"""Operations dashboard: request quality, business-rule alerts and PSI drift.
 
-The thresholds below are PLACEHOLDERS. Choose yours and justify them in
-REPORT.md: how many false alarms on normal inputs you accept, and how big a
-shift has to be before it matters for your product.
+ALL THRESHOLDS BELOW ARE PROVISIONAL and must be chosen and justified by team
+using an independent reference, acceptable false alarm rates and a drift demo.
 """
+from __future__ import annotations
 
 from pathlib import Path
 
@@ -13,127 +12,146 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parent
 REFERENCE_FILE = ROOT / "monitoring" / "reference_features.csv"
-
-PSI_BINS = 5           # quantile bins of the reference; few, because samples are small
-PSI_ALERT = 0.25       # PLACEHOLDER: alert when a feature's PSI exceeds this...
-NOISE_MULTIPLE = 2     # ...and this many times the PSI expected by chance (psi_noise)
-WINDOW = 100           # the drift check looks at the last WINDOW requests...
-MIN_WINDOW = 20        # ...and stays silent with fewer than this
-THUMBS_DOWN_ALERT = 0.4  # PLACEHOLDER: alert when this share of rated requests is 👎
+PSI_BINS = 5
+PSI_ALERT = 0.25
+NOISE_MULTIPLE = 2
+WINDOW = 100
+MIN_WINDOW = 20
+THUMBS_DOWN_ALERT = 0.4
+MIN_RATED = 10
+REVIEW_RATE_ALERT = 0.75
 
 
 def _bin(values: np.ndarray, reference: np.ndarray, bins: int) -> np.ndarray:
-    """Bin index of each value, with bins defined by the reference.
-
-    A feature with few distinct values in the reference (counts, labels coded as
-    numbers) gets one bin per value plus one for anything else; a continuous one
-    gets quantile bins, so each holds about the same share of the reference.
-    """
-    distinct = np.unique(reference)
-    if len(distinct) <= bins:
-        index = np.searchsorted(distinct, values)
-        found = (index < len(distinct)) & (distinct[np.minimum(index, len(distinct) - 1)] == values)
-        return np.where(found, index, len(distinct))
+    unique = np.unique(reference)
+    if len(unique) <= bins:
+        index = np.searchsorted(unique, values)
+        found = (index < len(unique)) & (unique[np.minimum(index, len(unique) - 1)] == values)
+        return np.where(found, index, len(unique))
     edges = np.unique(np.quantile(reference, np.linspace(0, 1, bins + 1)[1:-1]))
     return np.searchsorted(edges, values, side="right")
 
 
 def psi(reference, current, bins: int = PSI_BINS) -> float:
-    """Population stability index of `current` against `reference`.
-
-    0 means the same distribution; the usual rule of thumb is < 0.1 stable,
-    0.1-0.25 moderate, > 0.25 a large shift. With small samples, though, PSI is
-    large by chance alone: see `psi_noise`.
-    """
-    reference, current = np.asarray(reference, float), np.asarray(current, float)
-    reference, current = reference[~np.isnan(reference)], current[~np.isnan(current)]
-    if len(reference) == 0 or len(current) == 0:
+    """Population stability index; features must be numeric, non-PII."""
+    a, b = np.asarray(reference, dtype=float), np.asarray(current, dtype=float)
+    a, b = a[np.isfinite(a)], b[np.isfinite(b)]
+    if not len(a) or not len(b):
         return float("nan")
-    ref_bins, cur_bins = _bin(reference, reference, bins), _bin(current, reference, bins)
-    n_bins = max(ref_bins.max(), cur_bins.max()) + 1
-    expected = np.bincount(ref_bins, minlength=n_bins) / len(reference)
-    actual = np.bincount(cur_bins, minlength=n_bins) / len(current)
-    expected, actual = np.clip(expected, 1e-4, None), np.clip(actual, 1e-4, None)
-    return float(np.sum((actual - expected) * np.log(actual / expected)))
+    ia, ib = _bin(a, a, bins), _bin(b, a, bins)
+    n = max(int(ia.max()), int(ib.max())) + 1
+    pa = np.bincount(ia, minlength=n) / len(a)
+    pb = np.bincount(ib, minlength=n) / len(b)
+    pa, pb = np.clip(pa, 1e-4, None), np.clip(pb, 1e-4, None)
+    return float(((pb - pa) * np.log(pb / pa)).sum())
 
 
 def psi_noise(n_reference: int, n_current: int, bins: int = PSI_BINS) -> float:
-    """PSI you would expect by chance, with no drift at all, for these sample sizes.
-
-    About (bins - 1) * (1/n_reference + 1/n_current): with 40 reference inputs and
-    20 live ones that is already 0.3. An alert below this is a coin toss.
-    """
-    return (bins - 1) * (1 / n_reference + 1 / n_current)
+    return (bins - 1) * (1 / max(n_reference, 1) + 1 / max(n_current, 1))
 
 
 def load_reference() -> pd.DataFrame | None:
-    """Features of the reference inputs (`main.py reference` writes them)."""
-    return pd.read_csv(REFERENCE_FILE) if REFERENCE_FILE.is_file() else None
+    return pd.read_csv(REFERENCE_FILE) if REFERENCE_FILE.exists() else None
 
 
 def drift(reference: pd.DataFrame, current: pd.DataFrame) -> pd.DataFrame:
-    """PSI per feature, and whether it alerts. Both frames have one column per feature (no `f_` prefix).
-
-    The rule: alert when PSI exceeds PSI_ALERT *and* NOISE_MULTIPLE times what
-    chance alone would give with these sample sizes.
-    """
     rows = []
-    for feature in reference.columns:
-        if feature in current.columns:
-            value = psi(reference[feature], current[feature])
-            noise = psi_noise(reference[feature].notna().sum(), max(current[feature].notna().sum(), 1))
-            threshold = max(PSI_ALERT, NOISE_MULTIPLE * noise)
-            rows.append({"feature": feature, "psi": round(value, 3), "threshold": round(threshold, 3), "alert": bool(value > threshold)})
+    for col in reference.columns:
+        if col not in current:
+            continue
+        value = psi(reference[col], current[col])
+        n_ref, n_live = int(reference[col].notna().sum()), int(current[col].notna().sum())
+        threshold = max(PSI_ALERT, NOISE_MULTIPLE * psi_noise(n_ref, n_live))
+        rows.append({"feature": col, "psi": round(value, 3) if np.isfinite(value) else np.nan,
+                     "threshold": round(threshold, 3),
+                     "alert": bool(np.isfinite(value) and value > threshold)})
     return pd.DataFrame(rows, columns=["feature", "psi", "threshold", "alert"])
 
 
 def live_features(logs: pd.DataFrame) -> pd.DataFrame:
-    """The features of the last WINDOW logged requests, without the `f_` prefix."""
-    columns = [c for c in logs.columns if c.startswith("f_")]
-    return logs[columns].tail(WINDOW).rename(columns=lambda c: c[2:])
+    cols = [c for c in logs.columns if c.startswith("f_")]
+    return logs[cols].tail(WINDOW).rename(columns=lambda s: s[2:])
 
 
 def quality(logs: pd.DataFrame, freq: str = "h") -> pd.DataFrame:
-    """Quality signals per period, in long format (time, signal, value) for a line plot."""
     if logs.empty:
         return pd.DataFrame(columns=["time", "signal", "value"])
-    df = logs.set_index("timestamp")
+    df = logs.set_index("timestamp").sort_index()
     rated = df["feedback"].dropna().astype(float)
     signals = pd.DataFrame({
         "share sent to review": df["review"].astype(float).resample(freq).mean(),
-        "share 👎 (of rated)": (rated < 0).astype(float).resample(freq).mean(),
+        "share 👎 (rated only)": (rated < 0).astype(float).resample(freq).mean(),
     })
     if "f_confidence" in df:
-        signals["mean confidence"] = df["f_confidence"].resample(freq).mean()
-    long = signals.reset_index(names="time").melt("time", var_name="signal", value_name="value")
-    return long.dropna()
+        signals["mean classifier confidence"] = df["f_confidence"].astype(float).resample(freq).mean()
+    return signals.reset_index(names="time").melt("time", var_name="signal", value_name="value").dropna()
 
 
 def summary(logs: pd.DataFrame) -> pd.DataFrame:
     if logs.empty:
-        return pd.DataFrame({"metric": ["requests"], "value": [0]})
+        return pd.DataFrame({"metric": ["requests", "feedback"], "value": ["0", "0"]})
     rated = logs["feedback"].dropna().astype(float)
-    rows = {
+    stats = {
         "requests": len(logs),
-        "sent to review": f"{logs['review'].mean():.0%}",
-        "rated 👍/👎": len(rated),
-        "share 👎 (of rated)": f"{(rated < 0).mean():.0%}" if len(rated) else "-",
-        "median latency (s)": round(float(logs["latency_s"].median()), 2),
-        "mean cost per request (€)": round(float(logs["cost_eur"].mean()), 5),
-        "total cost (€)": round(float(logs["cost_eur"].sum()), 4),
+        "staff review share": f"{logs['review'].mean():.1%}",
+        "feedback count": len(rated),
+        "negative among rated": f"{(rated < 0).mean():.1%}" if len(rated) else "insufficient",
+        "median latency (s)": round(float(logs["latency_s"].median()), 3),
+        "mean estimated API cost (€)": round(float(logs["cost_eur"].mean()), 6),
+        "total tokens": int(logs["tokens"].sum()),
+        "total estimated API cost (€)": round(float(logs["cost_eur"].sum()), 6),
     }
-    return pd.DataFrame({"metric": list(rows), "value": [str(v) for v in rows.values()]})
+    return pd.DataFrame({"metric": list(stats), "value": [str(x) for x in stats.values()]})
 
 
 def alerts(logs: pd.DataFrame, reference: pd.DataFrame | None) -> list[str]:
-    """The alert rules. Each fired alert is one message."""
     fired = []
+    if logs.empty:
+        return fired
     window = logs.tail(WINDOW)
     if reference is not None and len(window) >= MIN_WINDOW:
         report = drift(reference, live_features(window))
         for row in report[report["alert"]].itertuples():
-            fired.append(f"Drift in `{row.feature}`: PSI {row.psi} > {row.threshold} over the last {len(window)} requests.")
-    rated = window["feedback"].dropna().astype(float) if not window.empty else pd.Series(dtype=float)
-    if len(rated) >= MIN_WINDOW and (rated < 0).mean() > THUMBS_DOWN_ALERT:
-        fired.append(f"{(rated < 0).mean():.0%} of the last {len(rated)} rated requests are 👎 (> {THUMBS_DOWN_ALERT:.0%}).")
+            fired.append(f"Input drift `{row.feature}`: PSI {row.psi} > {row.threshold} ({len(window)} requests).")
+        if float(window["review"].mean()) > REVIEW_RATE_ALERT:
+            fired.append(f"Staff-review rate {window['review'].mean():.0%} exceeds {REVIEW_RATE_ALERT:.0%}.")
+    rated = window["feedback"].dropna().astype(float)
+    if len(rated) >= MIN_RATED and float((rated < 0).mean()) > THUMBS_DOWN_ALERT:
+        fired.append(f"Negative feedback {((rated < 0).mean()):.0%} exceeds {THUMBS_DOWN_ALERT:.0%} on {len(rated)} rated cases.")
     return fired
+
+
+def prompt_feedback(logs: pd.DataFrame) -> pd.DataFrame:
+    """Observed live thumbs by bandit prompt variant (not causal evaluation)."""
+    variants = ("concise", "empathetic", "steps")
+    rows = []
+    for variant in variants:
+        matched = []
+        if not logs.empty:
+            for rec in logs.to_dict(orient="records"):
+                version_info = rec.get("versions")
+                output_info = rec.get("outputs")
+                if not isinstance(version_info, dict) or not isinstance(output_info, dict):
+                    continue
+                if version_info.get("prompt_variant") != variant:
+                    continue
+                if (output_info.get("component_b") or {}).get("mode") != "gemini_agent":
+                    continue
+                matched.append(rec)
+        votes = []
+        for rec in matched:
+            try:
+                vote = int(rec.get("feedback"))
+            except (TypeError, ValueError):
+                continue
+            if vote in (-1, 1):
+                votes.append(vote)
+        likes = sum(v == 1 for v in votes)
+        rows.append({
+            "prompt_variant": variant,
+            "live_requests": len(matched),
+            "rated_requests": len(votes),
+            "thumbs_up_share": round(likes / len(votes), 3) if votes else float("nan"),
+            "smoothed_bandit_reward": round((likes + 1) / (len(votes) + 2), 3),
+        })
+    return pd.DataFrame(rows)
