@@ -247,5 +247,58 @@ def main() -> None:
         print("\nWARNING: Some cases used offline fallback. Not a valid live LLM evaluation.")
 
 
+JUDGE_VS_HUMAN = ROOT / "eval" / "judge_vs_human.csv"
+
+
+def judge_only() -> None:
+    """Judge the replies ALREADY saved in eval/results.csv; generate nothing new.
+
+    Human labels were given to one specific set of Gemini replies. Re-running the
+    whole evaluation would produce different replies, so the judge would grade
+    other text than the team did. This mode keeps the comparison like-for-like.
+    Run: uv run python evaluate.py --judge-only
+    """
+    env.load_env()
+    if not os.environ.get("GEMINI_API_KEY"):
+        raise SystemExit("GEMINI_API_KEY is needed for the judge.")
+    if not RESULTS.exists():
+        raise SystemExit("eval/results.csv missing: run `uv run python main.py evaluate` first.")
+    cases = {r["id"]: r for r in _rows(CASES)}
+    human = {r["id"]: str(r.get("label", "")).strip().upper() for r in _rows(HUMAN)} if HUMAN.exists() else {}
+    results = pd.read_csv(RESULTS)
+    judgements, rows = {}, []
+    todo = results[results["component_b_mode"] == "gemini_agent"]
+    for n, (index, row) in enumerate(todo.iterrows(), 1):
+        print(f"{n}/{len(todo)}: {row['id']}", flush=True)
+        result = {"outputs": json.loads(row["outputs"])}
+        try:
+            verdict = _judge(cases[row["id"]], result)
+        except (RuntimeError, ValueError, KeyError, pipeline.InputProblem) as exc:
+            verdict = {"label": "ERROR", "reason": f"judge error: {type(exc).__name__}", "tokens": 0, "cost_eur": 0.0}
+        judgements[row["id"]] = verdict["label"]
+        results.loc[index, ["judge_label", "judge_tokens", "judge_cost_eur"]] = [
+            verdict["label"], verdict["tokens"], verdict["cost_eur"]]
+        rows.append({"id": row["id"], "human": human.get(row["id"], ""), "judge": verdict["label"],
+                     "agree": human.get(row["id"]) == verdict["label"], "judge_reason": verdict["reason"]})
+    results.to_csv(RESULTS, index=False)
+    pd.DataFrame(rows).to_csv(JUDGE_VS_HUMAN, index=False)
+    agreement = _human_agreement(judgements)
+    if SUMMARY.exists():
+        summary = json.loads(SUMMARY.read_text(encoding="utf-8"))
+        summary["judge_agreement_with_team_labels"] = agreement
+        summary["judge_total_cost_eur"] = float(pd.to_numeric(results["judge_cost_eur"], errors="coerce").fillna(0).sum())
+        SUMMARY.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"\nSaved {JUDGE_VS_HUMAN.relative_to(ROOT)}; updated {RESULTS.relative_to(ROOT)} and {SUMMARY.relative_to(ROOT)}")
+    print(f"LLM-judge agreement: {agreement['agreement']} on {agreement['count']} human-labeled cases (need >= 20).")
+    print("Confusion:", json.dumps(agreement.get("confusion", {})))
+    errors = sum(v not in {"PASS", "FAIL"} for v in judgements.values())
+    if errors:
+        print(f"WARNING: {errors} replies could not be judged (provider error or invalid JSON); rerun to retry.")
+
+
 if __name__ == "__main__":
-    main()
+    import sys
+    if "--judge-only" in sys.argv:
+        judge_only()
+    else:
+        main()

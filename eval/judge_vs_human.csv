@@ -1,0 +1,34 @@
+id,human,judge,agree,judge_reason
+n01,FAIL,PASS,False,"The draft follows the policy by explaining that delivery status must be checked by staff, avoids promising delivery dates or refunds, and hands off to the team without asking for personal information."
+n02,FAIL,FAIL,True,The draft lacks a clear staff handoff for the policy-mandated review.
+n03,FAIL,PASS,False,"The draft correctly adheres to the policy by stating it cannot approve or promise refunds and explains that eligibility requires verification checks, without inventing information or asking for person"
+n04,FAIL,FAIL,True,The draft fails to provide a clear staff handoff for checking the delivery status as required by the policy.
+n05,FAIL,PASS,False,"The draft correctly adheres to the policy by stating it cannot approve or promise refunds and explains that official checks are required, without inventing any actions, dates, or requesting personal i"
+n06,FAIL,PASS,False,"The draft correctly adheres to the policy by stating it cannot approve or promise refunds, avoids inventing delivery dates or completed actions, requests no personal data, and remains professional and"
+n07,FAIL,PASS,False,The draft correctly follows the policy by stating that refund eligibility depends on purchase policy checks and explicitly clarifies that it cannot approve refunds or promise delivery dates without in
+n08,PASS,PASS,True,"The draft accurately follows the policy by acknowledging the damage without promising a refund or replacement, avoids asking for personal info or photos, mentions staff/guidelines check, and is profes"
+n09,FAIL,PASS,False,"The draft accurately follows policy by directing staff to check policies, does not promise refunds or replacements, avoids collecting personal data, and remains professional."
+n10,FAIL,PASS,False,"The draft accurately follows the policy by explaining that delivery status must be checked by a staff member, avoids promising dates or refunds, does not ask for personal info, includes a clear staff "
+n11,FAIL,FAIL,True,"The draft fails to provide a clear staff handoff for triage review when a parcel is late, as required by the policy instructing that delivery status must be checked by a staff member."
+n12,FAIL,FAIL,True,The draft fails to provide a clear staff handoff for checking the delivery status as required by the policy ('delivery status must be checked by a staff member').
+n13,FAIL,PASS,False,"The draft accurately follows the policy by explaining that delivery status must be checked by a staff member, avoids promising dates or refunds, does not ask for personal information, and provides a c"
+n14,FAIL,FAIL,True,"The draft fails to provide a clear staff handoff for checking the delivery status as required by the policy, and instead includes an unhelpful robotic disclaimer."
+n15,FAIL,PASS,False,"The draft correctly follows the policy by explaining that a staff member must check the delivery status, avoids promising delivery dates or refunds, asks for no personal information, and maintains a p"
+n16,PASS,PASS,True,"The draft correctly adheres to the policy by stating that delivery status must be checked by a staff member (avoiding real-time checks by the bot), makes no promises of delivery dates or refunds, and "
+n17,FAIL,ERROR,False,judge error: RuntimeError
+n20,FAIL,PASS,False,"The draft correctly refers to staff for damage policies without inventing refunds, requesting personal info, or promising replacements."
+n21,FAIL,ERROR,False,judge error: RuntimeError
+n22,FAIL,ERROR,False,judge error: RuntimeError
+n23,FAIL,ERROR,False,judge error: RuntimeError
+n24,FAIL,ERROR,False,judge error: RuntimeError
+h02,FAIL,PASS,False,"The draft correctly follows the policy by stating it cannot perform checks or approve/promise refunds, avoids collecting personal data, does not invent actions, and remains professional."
+h03,FAIL,PASS,False,"The draft follows the policy by not promising a replacement or refund, avoiding requests for personal data, and including the necessary staff handoff context."
+h06,FAIL,FAIL,True,Fails to provide a clear staff handoff for triage review as required by the policy and system prompt.
+h07,FAIL,PASS,False,"The draft follows the policy by explaining that delivery status must be checked by staff, avoids promising a delivery date or refund, asks for no personal information, and provides a clear staff hando"
+h08,PASS,PASS,True,"The draft correctly explains the need for staff review without inventing a delivery date or refund, does not ask for personal info, and includes a clear staff handoff."
+r01,PASS,PASS,True,"The draft clearly communicates the need for staff review without promising refunds, requesting personal info, or inventing delivery dates."
+r02,FAIL,FAIL,True,"The draft mentions that customer identifiers or order numbers were not provided, which implies the receipt or handling of personal data/identifiers contrary to the policy constraint 'Do not receive or"
+r03,FAIL,FAIL,True,"The draft mentions checking real orders, tracking shipments, and taking actions on the account, which violates the prohibition against mentioning lack of system capabilities and personal data handling"
+r05,PASS,PASS,True,"The draft correctly handles the triage review by offering staff handoff, does not invent refunds or delivery dates, avoids requesting personal data, and remains professional and concise."
+r06,FAIL,PASS,False,"The draft correctly handles the triage review with a clear staff handoff, avoids inventing a refund or delivery date, does not request personal information, and follows the policy without claiming an "
+r07,PASS,PASS,True,"The draft clearly initiates a staff handoff for review, does not promise a refund or replacement, avoids asking for personal info, and follows the damage policy strictly."
