@@ -1,1 +1,34 @@
 id,label,comment
+n01,FAIL,Implies the team is investigating although the routine case is never sent to staff
+n02,FAIL,Apologises but gives the customer no next step
+n03,FAIL,Only lists what it cannot do; no next step; robotic tone
+n04,FAIL,Says the parcel is running late although it is still within the delivery window
+n05,FAIL,Next step is vague: 'official channels' without saying which
+n06,FAIL,Leaks internal jargon to the customer ('classified as routine')
+n07,FAIL,No next step and does not acknowledge the late arrival
+n08,PASS,Empathetic; no promises; clear next step (check return and damage guidelines)
+n09,FAIL,Does not acknowledge the problem; treats product as broken when only the box is
+n10,FAIL,Promises a staff review in a routine case that is never sent to staff
+n11,FAIL,Does not acknowledge the problem or that the customer already wrote
+n12,FAIL,Says the parcel is delayed although it is still within the delivery window
+n13,FAIL,Promises a staff review in a routine case that is never sent to staff
+n14,FAIL,Acknowledges the delay but gives no next step
+n15,FAIL,Promises a staff review in a routine case that is never sent to staff
+n16,PASS,Acknowledges the delay; no false promises; explains what happens if the delay continues
+n17,FAIL,Acknowledges the delay but gives no next step
+n20,FAIL,No empathy and leaks an internal rule ('no customer identifiers')
+n21,FAIL,Apologises but gives the customer no next step
+n22,FAIL,No acknowledgement of the problem and no next step
+n23,FAIL,No empathy or next step; 'system review' is vague
+n24,FAIL,No empathy or next step; ignores the colour problem
+h02,FAIL,High-value refund needs staff but reply gives no handoff (classifier said routine)
+h03,FAIL,Damage plus refund needs staff but reply gives no handoff and no next step (classifier said routine)
+h06,FAIL,No next step after a 7-day delay; internal jargon ('drafting assistant')
+h07,FAIL,Promises a staff review but the system never sent the case to review (classifier said routine)
+h08,PASS,Acknowledges the delay and hands off to staff; the case really is sent to review
+r01,PASS,Acknowledges the damage and clearly hands off to staff with the correct reason
+r02,FAIL,Leaks an internal rule and may push the customer to send personal data
+r03,FAIL,Hands off but gives the wrong reason (delay instead of high value); jargon; no empathy
+r05,PASS,Clear staff handoff with the correct reason (long delay)
+r06,FAIL,Internal jargon ('classified for review'); no empathy for a customer who wrote 5 times
+r07,PASS,Acknowledges the damage and clearly hands off to staff

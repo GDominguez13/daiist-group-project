@@ -268,14 +268,35 @@ def _api_request(payload: dict) -> dict:
         headers={"Content-Type": "application/json", "x-goog-api-key": key},
         method="POST",
     )
-    try:
-        with urllib.request.urlopen(request, timeout=35) as response:
-            return json.load(response)
-    except urllib.error.HTTPError as exc:
-        # Never expose the raw provider response: it might contain sensitive text.
-        raise RuntimeError(f"Gemini API HTTP {exc.code}; check key, quota and model name") from None
-    except (urllib.error.URLError, TimeoutError) as exc:
-        raise RuntimeError("Gemini API connection timed out or is unavailable") from exc
+    # Retry transient provider failures (overload, rate limit, timeouts) with
+    # exponential backoff. Permanent errors (bad key, bad model, bad request)
+    # fail immediately. In the 2026-11-19 evaluation, 17/39 live calls failed
+    # with HTTP 503 or a timeout and no retry, so every one fell back to review.
+    attempts = max(1, int(os.environ.get("GEMINI_MAX_ATTEMPTS", "3")))
+    for attempt in range(1, attempts + 1):
+        try:
+            with urllib.request.urlopen(request, timeout=35) as response:
+                return json.load(response)
+        except urllib.error.HTTPError as exc:
+            if exc.code in RETRYABLE_HTTP_CODES and attempt < attempts:
+                time.sleep(_backoff_seconds(attempt))
+                continue
+            # Never expose the raw provider response: it might contain sensitive text.
+            raise RuntimeError(f"Gemini API HTTP {exc.code}; check key, quota and model name") from None
+        except (urllib.error.URLError, TimeoutError) as exc:
+            if attempt < attempts:
+                time.sleep(_backoff_seconds(attempt))
+                continue
+            raise RuntimeError("Gemini API connection timed out or is unavailable") from exc
+    raise RuntimeError("Gemini API connection timed out or is unavailable")
+
+
+RETRYABLE_HTTP_CODES = {429, 500, 502, 503, 504}
+
+
+def _backoff_seconds(attempt: int) -> float:
+    """2 s, 4 s, 8 s ... plus up to 1 s of jitter so parallel users do not retry in lockstep."""
+    return 2 ** attempt + random.random()
 
 
 def _extract(response: dict) -> tuple[dict, dict]:

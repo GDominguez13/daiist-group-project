@@ -114,5 +114,39 @@ class TestParcelPilot(unittest.TestCase):
         self.assertEqual(variant, "empathetic")
 
 
+class TestGeminiRetry(unittest.TestCase):
+    """Transient provider errors are retried; permanent ones are not."""
+
+    def _http_error(self, code):
+        import urllib.error
+        return urllib.error.HTTPError("https://example.invalid", code, "error", {}, None)
+
+    def test_retries_503_then_succeeds(self):
+        import io, json as _json
+        ok = io.BytesIO(_json.dumps({"candidates": []}).encode())
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "MOCK_KEY", "GEMINI_MAX_ATTEMPTS": "3"}), \
+                patch("urllib.request.urlopen", side_effect=[self._http_error(503), self._http_error(503), ok]) as mocked, \
+                patch("time.sleep") as slept:
+            self.assertEqual(pipeline._api_request({}), {"candidates": []})
+        self.assertEqual(mocked.call_count, 3)
+        self.assertEqual(slept.call_count, 2)
+
+    def test_does_not_retry_bad_key(self):
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "MOCK_KEY", "GEMINI_MAX_ATTEMPTS": "3"}), \
+                patch("urllib.request.urlopen", side_effect=self._http_error(403)) as mocked, \
+                patch("time.sleep"):
+            with self.assertRaises(RuntimeError):
+                pipeline._api_request({})
+        self.assertEqual(mocked.call_count, 1)
+
+    def test_gives_up_after_max_attempts(self):
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "MOCK_KEY", "GEMINI_MAX_ATTEMPTS": "3"}), \
+                patch("urllib.request.urlopen", side_effect=TimeoutError()) as mocked, \
+                patch("time.sleep"):
+            with self.assertRaises(RuntimeError):
+                pipeline._api_request({})
+        self.assertEqual(mocked.call_count, 3)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
