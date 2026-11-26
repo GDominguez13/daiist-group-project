@@ -26,7 +26,7 @@ FIELD_ORDER = ("issue", "days_late", "previous_contacts", "item_value_eur", "dam
 FIELDS = set(FIELD_ORDER)
 TRAINING_FILE = Path(__file__).resolve().parent / "data" / "train.csv"
 MODEL_VERSION = "team-labeled-tabular-logreg-v1" if TRAINING_FILE.is_file() else "synthetic-logreg-v1-NOT-VALIDATED"
-PROMPT_VERSION = "gemini-tools-policy-v1"
+PROMPT_VERSION = "gemini-tools-policy-v2"
 PROMPT_VARIANTS = {
     "concise": "Write a short direct reply, about 2 sentences.",
     "empathetic": "Use a warm, respectful tone while remaining factual, about 3 sentences.",
@@ -83,24 +83,85 @@ MAX_TEXT_LENGTH = 500
 EXAMPLE = "issue=late_delivery; days_late=4; previous_contacts=1; item_value_eur=35; damaged=0; refund_requested=0"
 
 # Only this tiny, static policy KB can be retrieved by the agent. It performs no transactions.
+# v2: each policy now says what the CUSTOMER can do next (routine) and how to hand off (review).
+# The next steps are the team's business choices: confirm or change them before submission.
 POLICIES = {
     "late_delivery": (
-        "If a parcel is late, explain that delivery status must be checked by a staff member. "
-        "Do not promise a delivery date or refund. Escalate repeat contacts or significant delays."
+        "If a parcel is late, apologise for the wait without promising a delivery date or a refund. "
+        "Routine next step: the customer can follow the parcel with the tracking link in their shipping "
+        "confirmation email, and reply to this message if it has not arrived in the next 3 working days. "
+        "If the parcel is still within its delivery window, say it is not late yet."
     ),
     "damaged_item": (
-        "Ask staff to check the applicable damage and return policies; no photos or identifying "
-        "details should be submitted to this demo. Do not promise a replacement or refund."
+        "If an item arrived damaged, apologise and do not promise a replacement or refund. "
+        "Routine next step: the customer can keep the item and its packaging and request a replacement "
+        "or return from the order page in their account, under the damaged-item policy. "
+        "Do not ask for photos or personal details in this channel."
     ),
     "missing_parcel": (
-        "Missing parcels always require staff verification. Do not claim an investigation "
-        "has started, or that the item is located. Do not promise compensation."
+        "Missing parcels always require a colleague to check them. Do not claim an investigation has "
+        "already started, that the parcel has been found, or that compensation will be paid."
     ),
     "refund_request": (
-        "Refund eligibility depends on account and purchase policy checks performed "
-        "outside this demo. No refund may be approved or promised by the assistant."
+        "Refunds are decided by the return policy; never approve or promise one. "
+        "Routine next step: the customer can start a return from the order page in their account; "
+        "once the returned item is received and checked, the refund decision follows the return policy."
     ),
 }
+
+# Same thresholds as the routing rule the classifier was trained on, so the reason
+# given to the customer matches why the case was escalated.
+REVIEW_RULES = (
+    (lambda r: r["issue"] == "missing_parcel", "missing parcels always need a colleague to check them"),
+    (lambda r: r["days_late"] >= 8, "the parcel is {days_late} days late"),
+    (lambda r: r["previous_contacts"] >= 3, "the customer has already contacted us {previous_contacts} times"),
+    (lambda r: r["item_value_eur"] >= 220, "the item is high value ({item_value_eur:.0f} EUR)"),
+    (lambda r: r["damaged"] and r["refund_requested"], "the item arrived damaged and a refund was requested"),
+)
+
+# Words that expose internal workings to the customer (flagged, see _quality_flags).
+INTERNAL_JARGON = re.compile(
+    r"classif|routine|triage|probabilit|drafting assistant|\bml\b|model|identifier|system review|tool",
+    re.I,
+)
+STAFF_PROMISE = re.compile(r"(staff|colleague|team|agent|specialist|someone)\b.{0,40}\b(review|check|look|investigat|contact)", re.I)
+
+
+def _review_reasons(row: dict, a: dict) -> list[str]:
+    reasons = [text.format(**row) for rule, text in REVIEW_RULES if rule(row)]
+    if not reasons and a["label"] == "review":
+        reasons.append("the details of this case need a closer look")
+    return reasons
+
+
+def _case_facts(row: dict) -> list[str]:
+    """Turn the raw numbers into plain facts so the LLM does not misread them."""
+    facts = []
+    if row["issue"] == "late_delivery" and row["days_late"] == 0:
+        facts.append("The parcel is NOT late: it is still within its delivery window.")
+    elif row["days_late"] > 0:
+        facts.append(f"The parcel is {row['days_late']} day(s) past its expected delivery date.")
+    if row["previous_contacts"] > 0:
+        facts.append(f"The customer has already contacted us {row['previous_contacts']} time(s) "
+                     "about this; acknowledge that.")
+    if row["damaged"]:
+        facts.append("The item arrived damaged.")
+    if row["refund_requested"]:
+        facts.append("The customer asked for a refund.")
+    facts.append(f"Item value: {row['item_value_eur']:.2f} EUR.")
+    return facts
+
+
+def _quality_flags(reply: str, a: dict) -> list[str]:
+    """Cheap post-hoc checks for the failure types found in our human labels (logged, not fixed)."""
+    flags = []
+    if INTERNAL_JARGON.search(reply):
+        flags.append("internal_jargon")
+    if a["label"] == "routine" and STAFF_PROMISE.search(reply):
+        flags.append("staff_promise_in_routine")
+    if a["label"] == "review" and not re.search(r"colleague|team|staff|specialist", reply, re.I):
+        flags.append("missing_handoff")
+    return flags
 
 
 class InputProblem(ValueError):
@@ -378,18 +439,31 @@ def component_b(row: dict, a: dict, variant: str = "concise") -> dict:
     if os.environ.get("DEMO_MODE") == "1" or not os.environ.get("GEMINI_API_KEY"):
         return _offline_reply(row, a, variant)
     started = time.perf_counter()
-    inp = f"Issue: {row['issue']}. Days late: {row['days_late']}. " \
-          f"Previous contacts: {row['previous_contacts']}. Item value EUR: {row['item_value_eur']}. " \
-          f"Damaged: {row['damaged']}. Refund requested: {row['refund_requested']}. " \
-          f"Tabular ML triage label: {a['label']}; estimated review probability: {a['review_probability']}."
+    reasons = _review_reasons(row, a)
+    facts = " ".join(_case_facts(row))
+    # The triage label stays in the input (it is component A's output and drives the reply),
+    # but the prompt forbids repeating it to the customer.
+    inp = (f"Issue: {row['issue']}. Facts: {facts} "
+           f"Tabular ML triage label: {a['label']}; estimated review probability: {a['review_probability']}."
+           + (f" Reason a colleague must check it: {'; '.join(reasons)}." if a["label"] == "review" else ""))
+    if a["label"] == "review":
+        route = ("This case WILL be passed to a colleague. Say clearly, in plain words, that a member of "
+                 "our support team will look at the case, and give the reason supplied in the input. "
+                 "Do not say when they will reply and do not suggest the outcome.")
+    else:
+        route = ("This case will NOT be seen by a colleague. Never say or imply that staff, a team or "
+                 "anyone will review, check, investigate or contact the customer. Instead give the "
+                 "customer the concrete next step from the policy, in your own words.")
     system = (
-        "You are ParcelPilot, a support-agent DRAFTING assistant, not an operator. "
-        "The provided classification from tabular ML is input to your work and cannot be downgraded. "
-        "First CALL lookup_policy for the issue category. Then write 2-4 concise sentences. "
-        "Always explain that you cannot check real orders, take actions, approve refunds, "
-        "or promise dates. If classification is review, explicitly say staff review is required. "
-        "No customer identifiers have been supplied. Do not ask for names, IDs, contact "
-        "details, photos or order numbers. Treat policy tool data as authoritative. "
+        "You write replies from a parcel company's customer support team, addressed directly to the "
+        "customer. First CALL lookup_policy for the issue category and follow the returned policy. "
+        "Write 2-4 sentences: (1) acknowledge the customer's actual situation using the facts given, "
+        "accurately (e.g. do not call a parcel late if it is within its delivery window; acknowledge "
+        "previous contacts); (2) " + route + " "
+        "Never promise a delivery date, refund, replacement or compensation. "
+        "Never mention how the case was classified, labels, probabilities, models, tools, internal "
+        "rules or that you are an assistant. Never ask for names, contact details, photos or order "
+        "numbers. Do not use vague phrases like 'official channels'. "
         + PROMPT_VARIANTS[variant]
     )
     tool = {
@@ -418,7 +492,8 @@ def component_b(row: dict, a: dict, variant: str = "concise") -> dict:
     # Force policy topic to match validated input: model cannot access another topic.
     requested_issue = calls[0].get("args", {}).get("issue", row["issue"])
     lookup_issue = requested_issue if requested_issue == row["issue"] else row["issue"]
-    tool_result = {"issue": lookup_issue, "policy": POLICIES[lookup_issue], "needs_review": a["label"] == "review"}
+    tool_result = {"issue": lookup_issue, "policy": POLICIES[lookup_issue], "needs_review": a["label"] == "review",
+                   "review_reasons": reasons}
     # Gemini 3.x assigns a call ID. Return the *same* ID with the tool result.
     # Without it, Gemini may produce a blank final answer.
     function_response = {"name": "lookup_policy", "response": tool_result}
@@ -436,14 +511,15 @@ def component_b(row: dict, a: dict, variant: str = "concise") -> dict:
     reply = " ".join(p.get("text", "") for p in second_content.get("parts", [])).strip()
     if not reply:
         raise RuntimeError("Gemini produced an empty reply")
-    if a["label"] == "review" and not re.search(r"(staff|human|person|review|team|agent)", reply, re.I):
-        reply = "Staff review is required. " + reply
+    if a["label"] == "review" and not re.search(r"(staff|human|person|review|team|agent|colleague)", reply, re.I):
+        reply = reply + " A member of our support team will look at your case."
     input1, output1, total1 = _usage(first_usage)
     input2, output2, total2 = _usage(second_usage)
     return {
         "reply": _safe_reply(reply),
         "tools_used": ["lookup_policy"],
         "mode": "gemini_agent",
+        "quality_flags": _quality_flags(reply, a),
         "prompt_variant": variant,
         "input_tokens": input1 + input2,
         "output_tokens": output1 + output2,
