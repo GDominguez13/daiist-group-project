@@ -7,7 +7,10 @@ All human_labels.csv entries must be independently supplied by the TEAM.
 """
 from __future__ import annotations
 
+import argparse
 import csv
+import shutil
+from datetime import datetime, timezone
 import json
 import os
 import re
@@ -20,6 +23,7 @@ import pandas as pd
 import env
 import pipeline
 
+env.load_env()
 ROOT = Path(__file__).resolve().parent
 CASES = ROOT / "eval" / "cases.csv"
 RESULTS = ROOT / "eval" / "results.csv"
@@ -152,7 +156,7 @@ def main() -> None:
         raise SystemExit("eval/cases.csv missing")
     cases = [r for r in _rows(CASES) if (r.get("input") or "").strip()]
     if not cases:
-        raise SystemExit("eval/cases.csv is empty. See README_APPLY.md for demo data / team-authored cases.")
+        raise SystemExit("eval/cases.csv is empty. See eval/README.md.")
     judge_enabled = os.environ.get("EVAL_USE_LLM_JUDGE") == "1" and bool(os.environ.get("GEMINI_API_KEY"))
     rows, judgements = [], {}
     for n, case in enumerate(cases, 1):
@@ -189,11 +193,19 @@ def main() -> None:
             "judge_label": judge_result["label"],
             "judge_tokens": judge_result["tokens"],
             "judge_cost_eur": judge_result["cost_eur"],
+            "versions": json.dumps(result["versions"]),
             "outputs": json.dumps(result["outputs"], ensure_ascii=False),
         })
     results = pd.DataFrame(rows)
     RESULTS.parent.mkdir(exist_ok=True)
     results.to_csv(RESULTS, index=False)
+    live = results.loc[results["component_b_mode"] == "gemini_agent", ["id", "outputs"]].copy()
+    inputs = {case["id"]: case["input"] for case in cases}
+    live["input"] = live["id"].map(inputs)
+    live["route"] = live["outputs"].map(lambda raw: json.loads(raw)["component_a"]["label"])
+    live["draft"] = live["outputs"].map(lambda raw: json.loads(raw)["component_b"]["reply"])
+    live[["id", "input", "route", "draft"]].to_csv(RESULTS.parent / "blind_review.csv", index=False)
+
     metrics = _f1_accuracy(results["expected"].tolist(), results["predicted"].tolist())
     by_kind = results.groupby("kind", sort=True).agg(
         cases=("id", "count"), a_accuracy=("component_a_correct", "mean"),
@@ -210,7 +222,7 @@ def main() -> None:
     baseline_minutes = len(results) * manual_min
     pilot_minutes = int(results["review"].sum()) * review_min + int((~results["review"]).sum()) * auto_min
     summary = {
-        "WARNING": "AI-generated DEMO data, thresholds and synthetic ML training are NOT valid report evidence until replaced/validated by team.",
+        "WARNING": "Interpret results against the case source, training source and prompt version for this run.",
         "n_cases": int(len(results)),
         "kind_counts": {k: int(v) for k, v in Counter(results["kind"]).items()},
         "component_a_metrics_against_provisional_expected": metrics,
@@ -262,7 +274,7 @@ def judge_only() -> None:
     if not os.environ.get("GEMINI_API_KEY"):
         raise SystemExit("GEMINI_API_KEY is needed for the judge.")
     if not RESULTS.exists():
-        raise SystemExit("eval/results.csv missing: run `uv run python main.py evaluate` first.")
+        raise SystemExit("Selected run has no results.csv. Generate drafts before judging them.")
     cases = {r["id"]: r for r in _rows(CASES)}
     human = {r["id"]: str(r.get("label", "")).strip().upper() for r in _rows(HUMAN)} if HUMAN.exists() else {}
     results = pd.read_csv(RESULTS)
@@ -297,8 +309,28 @@ def judge_only() -> None:
 
 
 if __name__ == "__main__":
-    import sys
-    if "--judge-only" in sys.argv:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--judge-only", action="store_true")
+    parser.add_argument("--run", help="Run name under eval/runs")
+    args = parser.parse_args()
+    if args.judge_only and not args.run:
+        parser.error("--judge-only requires --run NAME to select the labeled drafts")
+    name = args.run or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    if not re.fullmatch(r"[a-zA-Z0-9_-]+", name):
+        parser.error("Use letters, digits, underscores and hyphens for the run name")
+    folder = ROOT / "eval" / "runs" / name
+    if not args.judge_only:
+        if folder.exists():
+            parser.error(f"Run already exists: {name}. Choose a new name.")
+        folder.mkdir(parents=True)
+        shutil.copyfile(CASES, folder / "cases.csv")
+        (folder / "human_labels.csv").write_text("id,label,comment\n", encoding="utf-8")
+    CASES = folder / "cases.csv"
+    RESULTS = folder / "results.csv"
+    HUMAN = folder / "human_labels.csv"
+    SUMMARY = folder / "summary.json"
+    JUDGE_VS_HUMAN = folder / "judge_vs_human.csv"
+    if args.judge_only:
         judge_only()
     else:
         main()

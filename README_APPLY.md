@@ -1,3 +1,5 @@
+> Historical starter notes. Current deployment instructions are in SETUP.md and current evaluation instructions are in eval/README.md.
+
 # EXACT APPLICATION GUIDE — ParcelPilot starter patch
 
 Source project: https://github.com/ami232/daiist-group-project
