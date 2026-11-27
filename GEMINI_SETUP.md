@@ -1,3 +1,5 @@
+> Historical starter notes. Current deployment instructions are in SETUP.md and current evaluation instructions are in eval/README.md.
+
 # ParcelPilot: exact Gemini setup (November 2026)
 
 This upgrade is for the earlier `daiist_parcelpilot_starter_overlay.zip` app.

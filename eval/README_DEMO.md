@@ -1,3 +1,5 @@
+> Historical starter notes. Current deployment instructions are in SETUP.md and current evaluation instructions are in eval/README.md.
+
 # Critical: AI-generated DEMONSTRATION fixtures, NOT your submission evidence
 
 `cases.csv`, `reference.csv`, `shifted.csv`, and `monitoring/reference_features.csv`
