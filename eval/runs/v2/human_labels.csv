@@ -1,0 +1,40 @@
+id,label,comment
+n01,PASS,"Correct delay, clear next step (track, reply after 3 working days), no staff promise"
+n02,PASS,"Correct amount and damage, clear next step (replacement/return from order page), no staff promise"
+n03,PASS,"Clear next step (start return from order page); refund not promised, decided after item is checked; no staff promise"
+n04,PASS,Correctly says parcel is not late yet; tracking link as next step
+n05,PASS,Refund not promised: decision after item is received and checked; clear next step
+n06,FAIL,Implies the refund is guaranteed ('will be processed') instead of a decision after the item is checked
+n07,FAIL,Parcel is still late (not delivered) but the reply asks the customer to return it
+n08,PASS,"Correct damage, clear next step (replacement/return from order page), no staff promise"
+n09,FAIL,Says the item arrived damaged although damaged=0; treats an unconfirmed damage as fact
+n10,FAIL,5 days late but only says keep tracking; no next step if the parcel does not arrive
+n11,PASS,Correctly acknowledges the previous contact and delay; clear next step
+n12,PASS,Correctly says not late yet; tracking plus reply-if-not-arrived next step
+n13,PASS,Correct delay; tracking plus reply-if-not-arrived next step
+n14,PASS,Correctly acknowledges second contact and delay; clear next step
+n15,PASS,Correct delay; tracking plus reply-if-not-arrived next step
+n16,PASS,Correct delay and second contact; tracking plus reply-if-not-arrived next step
+n17,PASS,"Reply is correct with a clear next step (6 days late, 189 EUR could arguably be routed to review: classifier issue, not draft)"
+n18,PASS,"Correct damage, clear next step; 'welcome to keep' slightly ambiguous but consistent with n02/n08"
+n19,PASS,"Correct damage, clear next step; consistent with n18"
+n20,PASS,"Correct damage, clear next step; no staff promise"
+n21,FAIL,Says the parcel arrived damaged instead of the item (damaged=1 refers to the product); misreads the case facts
+n22,PASS,"Refund decision after the item is checked, not promised; clear next step"
+n23,PASS,"Refund decision follows return policy, not promised; clear next step"
+n24,PASS,"Outcome decided after inspection, refund not promised; clear next step"
+h01,FAIL,Explains an internal procedure ('missing parcels always need a colleague') and gives the customer no next step
+h02,PASS,"Reply itself is correct (refund not promised, clear next step); routing is wrong: 380 EUR refund should go to review (classifier issue)"
+h03,FAIL,Customer asked for a refund but the reply ignores it (only replacement/return)
+h04,PASS,Correct delay; tracking plus reply-if-not-arrived next step
+h05,PASS,Reply itself is correct with clear next step; routing is wrong: 225 EUR is above the 220 EUR review threshold (classifier issue)
+h06,PASS,Correct 7-day delay; tracking plus reply-if-not-arrived next step
+h07,PASS,Reply itself is correct with clear next step; routing is wrong: 8 days late is at the review threshold (classifier issue)
+h08,FAIL,Says staff will look at the case but gives no next step or timeframe; also wrongly routed to review (classifier issue)
+r01,FAIL,Explains internal review criteria but gives the customer no next step or timeframe
+r02,FAIL,Explains an internal rule ('missing parcels always need a colleague') and gives the customer no next step
+r03,FAIL,Explains the internal review reason (high value) and gives the customer no next step
+r04,FAIL,"Explains the internal review reason, refers to 'the customer' in third person, and gives no next step"
+r05,FAIL,Explains the internal review reason (21 days late) and gives the customer no next step
+r06,FAIL,"Lists internal review criteria, refers to 'the customer' in third person, and gives no next step"
+r07,FAIL,Explains the internal review reason (high value) and gives the customer no next step
