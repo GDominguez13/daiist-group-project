@@ -1,0 +1,95 @@
+{
+  "WARNING": "Interpret results against the case source, training source and prompt version for this run.",
+  "n_cases": 46,
+  "kind_counts": {
+    "normal": 24,
+    "hard": 8,
+    "review": 7,
+    "out_of_scope": 7
+  },
+  "component_a_metrics_against_provisional_expected": {
+    "accuracy": 0.8913,
+    "macro_f1": 0.8914,
+    "per_class": {
+      "out_of_scope": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 7
+      },
+      "review": {
+        "precision": 0.8889,
+        "recall": 0.6667,
+        "f1": 0.7619,
+        "support": 12
+      },
+      "routine": {
+        "precision": 0.8667,
+        "recall": 0.963,
+        "f1": 0.9123,
+        "support": 27
+      }
+    }
+  },
+  "component_b_live_responses": 39,
+  "component_b_rule_check_rate_NOT_human_quality": 0.8478260869565217,
+  "end_to_end_programmatic_check_NOT_human_quality": 0.8913043478260869,
+  "review_rate": 0.34782608695652173,
+  "tokens_total": 31100,
+  "mean_tokens_per_case": 676.0869565217391,
+  "total_estimated_eur_excluding_judge": 0.013889599999999998,
+  "mean_estimated_eur_per_request": 0.0003019478260869565,
+  "median_latency_s": 1.33,
+  "judge_agreement_with_team_labels": {
+    "count": 39,
+    "agreement": 0.7179,
+    "confusion": {
+      "human_PASS_judge_PASS": 23,
+      "human_PASS_judge_FAIL": 1,
+      "human_FAIL_judge_PASS": 10,
+      "human_FAIL_judge_FAIL": 5
+    }
+  },
+  "judge_total_cost_eur": 0.007078699999999999,
+  "baseline_assumed_minutes_all_manual": 184.0,
+  "pilot_assumed_minutes_with_review": 79.0,
+  "projected_minutes_saved_NOT_measured": 105.0,
+  "normal_by_kind": {
+    "hard": {
+      "cases": 8,
+      "a_accuracy": 0.375,
+      "rule_check_rate": 1.0,
+      "e2e_check_rate": 0.375,
+      "review_rate": 0.25,
+      "median_latency_s": 1.3935,
+      "mean_cost_eur": 0.0004
+    },
+    "normal": {
+      "cases": 24,
+      "a_accuracy": 1.0,
+      "rule_check_rate": 1.0,
+      "e2e_check_rate": 1.0,
+      "review_rate": 0.0,
+      "median_latency_s": 1.3935,
+      "mean_cost_eur": 0.0003
+    },
+    "out_of_scope": {
+      "cases": 7,
+      "a_accuracy": 1.0,
+      "rule_check_rate": 0.0,
+      "e2e_check_rate": 1.0,
+      "review_rate": 1.0,
+      "median_latency_s": 0.0,
+      "mean_cost_eur": 0.0
+    },
+    "review": {
+      "cases": 7,
+      "a_accuracy": 1.0,
+      "rule_check_rate": 1.0,
+      "e2e_check_rate": 1.0,
+      "review_rate": 1.0,
+      "median_latency_s": 1.329,
+      "mean_cost_eur": 0.0004
+    }
+  }
+}
